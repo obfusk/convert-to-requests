@@ -39,7 +39,7 @@ def curl_to_requests(curl_command):
 
 def curl_to_python_code(curl_command):
     method, url, headers, data, _ = curl_to_requests(curl_command)
-    d = f", data={d!r}" if data is not None else ""
+    d = f", data={data!r}" if data is not None else ""
     return f"requests.request({method!r}, {url!r}, headers={headers!r}{d})"
 
 
