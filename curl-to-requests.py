@@ -12,7 +12,8 @@ def curl_to_requests(curl_command):
     method = "GET"
     headers = {}
     data = None
-    url, *curl = shlex.split(curl_command)[1:]
+    cmd, url, *curl = [x for x in shlex.split(curl_command) if x != "\n"]
+    assert cmd == "curl"
     i, l = 0, len(curl)
     while i < l:
         if curl[i] == "-H":
@@ -27,6 +28,9 @@ def curl_to_requests(curl_command):
         elif curl[i] == "--data-raw":
             data = curl[i+1].encode()
             i += 1
+        elif curl[i] == "--compressed":
+            # FIXME
+            print("Warning: ignoring --compressed", file=sys.stderr)
         else:
             raise NotImplementedError(f"Unknown curl argument: {curl[i]}")
         i += 1
