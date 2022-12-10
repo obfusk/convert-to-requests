@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: 2022 FC Stegerman <flx@obfusk.net>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import argparse
 import json
-import shlex
 import re
+import shlex
 import sys
 
 import requests
@@ -66,20 +67,22 @@ def to_python_code(method, url, headers, data=None):
     return f"requests.request({method!r}, {url!r}, headers={headers!r}{d})"
 
 
-def main(*args):
-    verbose = "-v" in args or "--verbose" in args
-    dry_run = "--dry-run" in args
-    fetch = "--fetch" in args
+def main():
+    parser = argparse.ArgumentParser(prog="curl-to-requests.py")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--fetch", action="store_true")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    args = parser.parse_args()
     command = sys.stdin.read()
-    if fetch:
+    if args.fetch:
         method, url, headers, data, ign = fetch_to_requests(command)
     else:
         method, url, headers, data, ign = curl_to_requests(command)
     for arg in ign:
         print(f"Warning: ignoring {arg}", file=sys.stderr)
-    if verbose or dry_run:
+    if args.verbose or args.dry_run:
         print(f"method={method} url={url} headers={headers} data={data}", file=sys.stderr)
-    if not dry_run:
+    if not args.dry_run:
         kwargs = dict(headers=headers)
         if data is not None:
             kwargs["data"] = data
@@ -89,4 +92,6 @@ def main(*args):
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:])
+    main()
+
+# vim: set tw=80 sw=4 sts=4 et fdm=marker :
