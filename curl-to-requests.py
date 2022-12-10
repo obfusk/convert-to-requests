@@ -8,13 +8,11 @@ import sys
 import requests
 
 
-def main(*args):
-    verbose = "-v" in args or "--verbose" in args
-    dry_run = "--dry-run" in args
+def curl_to_requests(curl_command):
     method = "GET"
     headers = {}
     data = None
-    url, *curl = shlex.split(sys.stdin.read())[1:]
+    url, *curl = shlex.split(curl_command)[1:]
     i, l = 0, len(curl)
     while i < l:
         if curl[i] == "-H":
@@ -32,6 +30,14 @@ def main(*args):
         else:
             raise NotImplementedError(f"Unknown curl argument: {curl[i]}")
         i += 1
+    return method, url, headers, data
+
+
+def main(*args):
+    verbose = "-v" in args or "--verbose" in args
+    dry_run = "--dry-run" in args
+    curl_command = sys.stdin.read()
+    method, url, headers, data = curl_to_requests(curl_command)
     if verbose or dry_run:
         print(f"method={method} url={url} headers={headers} data={data}", file=sys.stderr)
     if not dry_run:
