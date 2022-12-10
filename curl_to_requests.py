@@ -2,18 +2,22 @@
 # SPDX-FileCopyrightText: 2022 FC Stegerman <flx@obfusk.net>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import json
 import shlex
+import re
 import sys
 
 import requests
 
+METHODS = ("GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE")
 
-def curl_to_requests(curl_command):
+
+def curl_to_requests(command):
     method = "GET"
     headers = {}
     data = None
     ignored = []
-    cmd, url, *curl = [x for x in shlex.split(curl_command) if x != "\n"]
+    cmd, url, *curl = [x for x in shlex.split(command) if x != "\n"]
     assert cmd == "curl"
     i, l = 0, len(curl)
     while i < l:
@@ -23,8 +27,7 @@ def curl_to_requests(curl_command):
             i += 1
         elif curl[i] == "-X":
             method = curl[i+1]
-            if method not in ("GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE"):
-                raise NotImplementedError(f"Unknown method: {curl[i+1]}")
+            assert method in METHODS
             i += 1
         elif curl[i] == "--data-raw":
             data = curl[i+1].encode()
@@ -37,8 +40,28 @@ def curl_to_requests(curl_command):
     return method, url, headers, data, ignored
 
 
-def curl_to_python_code(curl_command):
-    method, url, headers, data, _ = curl_to_requests(curl_command)
+def fetch_to_requests(command):
+    command = re.sub(r"^(await )?fetch\(", "[", command)
+    command = re.sub(r"\);$", "]", command)
+    url, args = json.loads(command)
+    method = args.pop("method", "GET")
+    headers = args.pop("headers")
+    data = args.pop("body", None)
+    if data is not None:
+        data = data.encode()
+    assert method in METHODS
+    return method, url, headers, data, [f"{k}=" for k in args]
+
+
+def curl_to_python_code(command):
+    return to_python_code(*curl_to_requests(command)[:-1])
+
+
+def fetch_to_python_code(command):
+    return to_python_code(*fetch_to_requests(command)[:-1])
+
+
+def to_python_code(method, url, headers, data=None):
     d = f", data={data!r}" if data is not None else ""
     return f"requests.request({method!r}, {url!r}, headers={headers!r}{d})"
 
@@ -46,8 +69,12 @@ def curl_to_python_code(curl_command):
 def main(*args):
     verbose = "-v" in args or "--verbose" in args
     dry_run = "--dry-run" in args
-    curl_command = sys.stdin.read()
-    method, url, headers, data, ign = curl_to_requests(curl_command)
+    fetch = "--fetch" in args
+    command = sys.stdin.read()
+    if fetch:
+        method, url, headers, data, ign = fetch_to_requests(command)
+    else:
+        method, url, headers, data, ign = curl_to_requests(command)
     for arg in ign:
         print(f"Warning: ignoring {arg}", file=sys.stderr)
     if verbose or dry_run:
