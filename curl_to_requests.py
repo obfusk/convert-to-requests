@@ -12,6 +12,11 @@ import requests
 
 METHODS = ("GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE")
 
+DESC = """
+Parse curl command (from "copy to cURL") or (w/ --fetch) fetch code (from "copy
+to fetch") from stdin and either execute the request using requests.request()
+(exec subcommand) or print Python code to do so (code subcommand).
+"""[1:-1]
 
 def curl_to_requests(command):
     """
@@ -91,7 +96,7 @@ def to_python_code(method, url, headers, data=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="curl-to-requests.py")
+    parser = argparse.ArgumentParser(prog="curl-to-requests.py", description=DESC)
     parser.add_argument("--fetch", action="store_true",
                         help="parse fetch instead of curl")
     subs = parser.add_subparsers(title="subcommands", dest="command")
