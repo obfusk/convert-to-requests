@@ -14,6 +14,11 @@ METHODS = ("GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE")
 
 
 def curl_to_requests(command):
+    """
+    Parse curl command from "copy as cURL" (Firefox, Chromium).
+
+    Returns method, url, headers, data, ignored_opts.
+    """
     method = "GET"
     headers = {}
     data = None
@@ -32,6 +37,7 @@ def curl_to_requests(command):
             i += 1
         elif curl[i] == "--data-raw":
             data = curl[i+1].encode()
+            method = "POST"   # Chromium doesn't add -X POST
             i += 1
         elif curl[i] == "--compressed":
             ignored.append(curl[i])
@@ -42,6 +48,16 @@ def curl_to_requests(command):
 
 
 def fetch_to_requests(command):
+    """
+    Parse fetch code from "copy as fetch" (Firefox, Chromium) or "copy
+    as Node.js fetch" (Chromium).
+
+    CAVEATS:
+    * "copy as fetch" does not include cookies ("copy as Node.js fetch" does);
+    * Chromium doesn't include a User-Agent header in either.
+
+    Returns method, url, headers, data, ignored_args.
+    """
     command = re.sub(r"^(await )?fetch\(", "[", command)
     command = re.sub(r"\);$", "]", command)
     url, args = json.loads(command)
@@ -50,39 +66,50 @@ def fetch_to_requests(command):
     data = args.pop("body", None)
     if data is not None:
         data = data.encode()
+    if referrer := args.pop("referrer", None):
+        headers["referer"] = referrer   # not a typo
+    if referrer_policy := args.pop("referrerPolicy", None):
+        headers["referrer-policy"] = referrer_policy
     assert method in METHODS
     return method, url, headers, data, [f"{k}=" for k in args]
 
 
 def curl_to_python_code(command):
+    """Convert curl command to Python code."""
     return to_python_code(*curl_to_requests(command)[:-1])
 
 
 def fetch_to_python_code(command):
+    """Convert fetch code to Python code."""
     return to_python_code(*fetch_to_requests(command)[:-1])
 
 
 def to_python_code(method, url, headers, data=None):
+    """Create Python code for requests.request() call."""
     d = f", data={data!r}" if data is not None else ""
     return f"requests.request({method!r}, {url!r}, headers={headers!r}{d})"
 
 
 def main():
     parser = argparse.ArgumentParser(prog="curl-to-requests.py")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--fetch", action="store_true")
-    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--fetch", action="store_true",
+                        help="parse fetch instead of curl")
+    subs = parser.add_subparsers(title="subcommands", dest="command")
+    subs.required = True
+    sub_exec = subs.add_parser("exec", help="execute the request")
+    sub_exec.add_argument("-v", "--verbose", action="store_true")
+    sub_code = subs.add_parser("code", help="print the Python code")
     args = parser.parse_args()
     command = sys.stdin.read()
-    if args.fetch:
-        method, url, headers, data, ign = fetch_to_requests(command)
-    else:
-        method, url, headers, data, ign = curl_to_requests(command)
+    method, url, headers, data, ign = \
+        fetch_to_requests(command) if args.fetch else curl_to_requests(command)
     for arg in ign:
         print(f"Warning: ignoring {arg}", file=sys.stderr)
-    if args.verbose or args.dry_run:
-        print(f"method={method} url={url} headers={headers} data={data}", file=sys.stderr)
-    if not args.dry_run:
+    if args.command == "code":
+        print(to_python_code(method, url, headers, data))
+    elif args.command == "exec":
+        if args.verbose:
+            print(f"{method} {url} headers={headers} data={data}", file=sys.stderr)
         kwargs = dict(headers=headers)
         if data is not None:
             kwargs["data"] = data
