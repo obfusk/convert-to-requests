@@ -18,6 +18,7 @@ to fetch") from stdin and either execute the request using requests.request()
 (exec subcommand) or print Python code to do so (code subcommand).
 """[1:-1]
 
+
 def curl_to_requests(command):
     """
     Parse curl command from "copy as cURL" (Firefox, Chromium).
