@@ -1,1 +1,8 @@
 __pycache__
+
+/build
+/dist
+/to_requests.egg-info
+
+.coverage
+/htmlcov

@@ -195,7 +195,7 @@ def fetch_to_requests(command: str) -> RequestData:
     >>> code = r'''
     ... fetch("https://example.com", {
     ...   "headers": {
-    ...     "accept": "text/json"
+    ...     "accept": "application/json"
     ...   },
     ...   "body": null,
     ...   "method": "GET",
@@ -204,7 +204,7 @@ def fetch_to_requests(command: str) -> RequestData:
     ... });
     ... '''.strip()
     >>> fetch_to_requests(code)
-    RequestData(method='GET', url='https://example.com', headers={'accept': 'text/json'}, data=None, ignored=['mode=', 'credentials='])
+    RequestData(method='GET', url='https://example.com', headers={'accept': 'application/json'}, data=None, ignored=['mode=', 'credentials='])
     >>> code = r'''
     ... await fetch("https://example.com", {
     ...     "credentials": "include",
