@@ -70,6 +70,7 @@ requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
 
 import argparse
 import json
+import pprint
 import re
 import shlex
 import sys
@@ -329,10 +330,22 @@ def fetch_to_python_code(command: str) -> str:
 
 
 def to_python_code(method: str, url: str, headers: Dict[str, str],
-                   data: Optional[bytes] = None) -> str:
+                   data: Optional[bytes] = None, pretty: bool = False) -> str:
     """Create Python code for requests.request() call."""
-    d = f", data={data!r}" if data is not None else ""
-    return f"requests.request({method!r}, {url!r}, headers={headers!r}{d})"
+    if pretty and headers:
+        h = pprint.pformat(headers, indent=4, sort_dicts=False)
+        a = "\n " if "\n" in h else "\n    "
+        b = ",\n" if "\n" in h else "\n"
+        h = h[0] + a + h[1:-1] + b + h[-1]
+    else:
+        h = repr(headers)
+    s = f"requests.request({method!r}, {url!r}, headers={h}"
+    t = f", data={data!r})" if data is not None else ")"
+    w = len(s.rsplit("\n", 1)[-1]) + len(t)
+    if pretty and data is not None and w > 80:
+        t = pprint.pformat(data).replace("\n", "\n   ")
+        t = ", data=(\n    " + (t[1:-1] if "\n" in t else t) + "\n))"
+    return s + t
 
 
 def main() -> None:
@@ -345,7 +358,8 @@ def main() -> None:
     subs.required = True
     sub_exec = subs.add_parser("exec", help="execute the request")
     sub_exec.add_argument("-v", "--verbose", action="store_true")
-    subs.add_parser("code", help="print the Python code")
+    sub_code = subs.add_parser("code", help="print the Python code")
+    sub_code.add_argument("--pretty", action="store_true", help="pretty-print")
     args = parser.parse_args()
     command = sys.stdin.read()
     if args.fetch:
@@ -355,7 +369,7 @@ def main() -> None:
     for arg in req.ignored:
         print(f"Warning: ignoring {arg}", file=sys.stderr)
     if args.command == "code":
-        print(to_python_code(req.method, req.url, req.headers, req.data))
+        print(to_python_code(req.method, req.url, req.headers, req.data, pretty=args.pretty))
     elif args.command == "exec":
         if args.verbose:
             print(f"{req.method} {req.url} headers={req.headers} data={req.data}", file=sys.stderr)
