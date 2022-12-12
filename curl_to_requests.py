@@ -20,13 +20,13 @@ to fetch") from stdin and either execute the request using requests.request()
 
 
 def curl_to_requests(command):
-    """
+    r"""
     Parse curl command from "copy as cURL" (Firefox, Chromium).
 
     CAVEATS:
-    * Firefox produces e.g. --data-raw $'\\'foo\\'' when the POST data contains
+    * Firefox produces e.g. --data-raw $'\'foo\'' when the POST data contains
       single quotes; unfortunately, shlex can't parse this kind of (non-POSIX)
-      string, but rewriting to --data-raw \\''foo'\\' works.
+      string, but rewriting to --data-raw \''foo'\' works.
 
     Returns method, url, headers, data, ignored_opts.
     """
