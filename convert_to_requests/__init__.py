@@ -2,6 +2,67 @@
 # SPDX-FileCopyrightText: 2022 FC Stegerman <flx@obfusk.net>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+r"""
+convert curl/fetch command to python requests
+
+Parse curl command (from "copy to cURL") or (w/ --fetch) fetch code (from "copy
+to fetch") from stdin and either execute the request using requests.request()
+(exec subcommand) or print Python code to do so (code subcommand).
+
+
+CLI
+===
+
+$ convert-to-requests code <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
+requests.request('GET', 'https://obfusk.ch', headers={'User-Agent': 'Mozilla/5.0'})
+
+$ convert-to-requests exec -v <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'" | head -2
+GET https://obfusk.ch headers={'User-Agent': 'Mozilla/5.0'} data=None
+<!DOCTYPE html>
+<html lang="en">
+
+$ convert-to-requests code <<< "curl 'https://example.com' -H 'User-Agent: Mozilla/5.0' -H 'Accept: application/json' -X POST --data-raw foo"
+requests.request('POST', 'https://example.com', headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}, data=b'foo')
+
+$ convert-to-requests --fetch code <<-END
+fetch("https://example.com", {
+  "headers": {
+    "accept": "application/json"
+  },
+  "body": null,
+  "method": "GET",
+  "mode": "cors",
+  "credentials": "omit"
+});
+END
+Warning: ignoring mode=
+Warning: ignoring credentials=
+requests.request('GET', 'https://example.com', headers={'accept': 'application/json'})
+
+
+API
+===
+
+>>> from convert_to_requests import curl_to_requests, to_python_code
+>>> req = curl_to_requests(r"curl 'https://example.com' -X POST --data-raw $'\'foo\''", parse_bash_strings=True)
+>>> req
+RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
+>>> print(to_python_code(req.method, req.url, req.headers, req.data))
+requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
+
+>>> from convert_to_requests import fetch_to_requests, to_python_code
+>>> req = fetch_to_requests('''fetch("https://example.com", {"headers": {}, "method": "POST", "body": "'foo'"});''')
+>>> req
+RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
+>>> print(to_python_code(req.method, req.url, req.headers, req.data))
+requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
+
+>>> from convert_to_requests import parse_dollar_string
+>>> parse_dollar_string(r"$'\'foo\''")
+("'foo'", '')
+
+"""
+
 import argparse
 import json
 import re

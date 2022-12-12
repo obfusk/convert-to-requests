@@ -29,14 +29,14 @@ subcommand).
 
 Get the code:
 
-```sh
+```bash
 $ convert-to-requests code <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
 requests.request('GET', 'https://obfusk.ch', headers={'User-Agent': 'Mozilla/5.0'})
 ```
 
 Execute the request:
 
-```sh
+```bash
 $ convert-to-requests exec -v <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'" | head -2
 GET https://obfusk.ch headers={'User-Agent': 'Mozilla/5.0'} data=None
 <!DOCTYPE html>
@@ -45,14 +45,14 @@ GET https://obfusk.ch headers={'User-Agent': 'Mozilla/5.0'} data=None
 
 POST works too:
 
-```sh
+```bash
 $ convert-to-requests code <<< "curl 'https://example.com' -H 'User-Agent: Mozilla/5.0' -H 'Accept: application/json' -X POST --data-raw foo"
 requests.request('POST', 'https://example.com', headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}, data=b'foo')
 ```
 
 ### fetch
 
-```sh
+```bash
 $ convert-to-requests --fetch code <<-END
 fetch("https://example.com", {
   "headers": {
@@ -67,6 +67,32 @@ END
 Warning: ignoring mode=
 Warning: ignoring credentials=
 requests.request('GET', 'https://example.com', headers={'accept': 'application/json'})
+```
+
+## Python API
+
+```python
+>>> from convert_to_requests import curl_to_requests, to_python_code
+>>> req = curl_to_requests(r"curl 'https://example.com' -X POST --data-raw $'\'foo\''", parse_bash_strings=True)
+>>> req
+RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
+>>> print(to_python_code(req.method, req.url, req.headers, req.data))
+requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
+```
+
+```python
+>>> from convert_to_requests import fetch_to_requests, to_python_code
+>>> req = fetch_to_requests('''fetch("https://example.com", {"headers": {}, "method": "POST", "body": "'foo'"});''')
+>>> req
+RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
+>>> print(to_python_code(req.method, req.url, req.headers, req.data))
+requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
+```
+
+```python
+>>> from convert_to_requests import parse_dollar_string
+>>> parse_dollar_string(r"$'\'foo\''")
+("'foo'", '')
 ```
 
 ## CAVEATS
