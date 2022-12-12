@@ -81,6 +81,13 @@ requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
 ```
 
 ```python
+>>> import requests
+>>> r = requests.request(req.method, req.url, headers=req.headers, data=req.data)
+>>> r.raise_for_status()
+>>> print(r.text, end="")
+```
+
+```python
 >>> from convert_to_requests import fetch_to_requests, to_python_code
 >>> req = fetch_to_requests('''fetch("https://example.com", {"headers": {}, "method": "POST", "body": "'foo'"});''')
 >>> req
