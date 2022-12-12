@@ -1,22 +1,22 @@
-[![GitHub Release](https://img.shields.io/github/release/obfusk/to-requests.svg?logo=github)](https://github.com/obfusk/to-requests/releases)
-[![PyPI Version](https://img.shields.io/pypi/v/to-requests.svg)](https://pypi.python.org/pypi/to-requests)
-[![Python Versions](https://img.shields.io/pypi/pyversions/to-requests.svg)](https://pypi.python.org/pypi/to-requests)
-[![CI](https://github.com/obfusk/to-requests/workflows/CI/badge.svg)](https://github.com/obfusk/to-requests/actions?query=workflow%3ACI)
+[![GitHub Release](https://img.shields.io/github/release/obfusk/convert-to-requests.svg?logo=github)](https://github.com/obfusk/convert-to-requests/releases)
+[![PyPI Version](https://img.shields.io/pypi/v/convert-to-requests.svg)](https://pypi.python.org/pypi/convert-to-requests)
+[![Python Versions](https://img.shields.io/pypi/pyversions/convert-to-requests.svg)](https://pypi.python.org/pypi/convert-to-requests)
+[![CI](https://github.com/obfusk/convert-to-requests/workflows/CI/badge.svg)](https://github.com/obfusk/convert-to-requests/actions?query=workflow%3ACI)
 [![GPLv3+](https://img.shields.io/badge/license-GPLv3+-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 
 <!--
-<a href="https://repology.org/project/to-requests/versions">
-  <img src="https://repology.org/badge/vertical-allrepos/to-requests.svg?header="
+<a href="https://repology.org/project/convert-to-requests/versions">
+  <img src="https://repology.org/badge/vertical-allrepos/convert-to-requests.svg?header="
     alt="Packaging status" align="right" />
 </a>
 
-<a href="https://repology.org/project/python:to-requests/versions">
-  <img src="https://repology.org/badge/vertical-allrepos/python:to-requests.svg?header="
+<a href="https://repology.org/project/python:convert-to-requests/versions">
+  <img src="https://repology.org/badge/vertical-allrepos/python:convert-to-requests.svg?header="
     alt="Packaging status" align="right" />
 </a>
 -->
 
-# to-requests
+# convert-to-requests
 
 ## convert curl/fetch command to python requests
 
@@ -30,14 +30,14 @@ subcommand).
 Get the code:
 
 ```sh
-$ to-requests code <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
+$ convert-to-requests code <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
 requests.request('GET', 'https://obfusk.ch', headers={'User-Agent': 'Mozilla/5.0'})
 ```
 
 Execute the request:
 
 ```sh
-$ to-requests exec -v <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'" | head -2
+$ convert-to-requests exec -v <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'" | head -2
 GET https://obfusk.ch headers={'User-Agent': 'Mozilla/5.0'} data=None
 <!DOCTYPE html>
 <html lang="en">
@@ -46,14 +46,14 @@ GET https://obfusk.ch headers={'User-Agent': 'Mozilla/5.0'} data=None
 POST works too:
 
 ```sh
-$ to-requests code <<< "curl 'https://example.com' -H 'User-Agent: Mozilla/5.0' -H 'Accept: application/json' -X POST --data-raw foo"
+$ convert-to-requests code <<< "curl 'https://example.com' -H 'User-Agent: Mozilla/5.0' -H 'Accept: application/json' -X POST --data-raw foo"
 requests.request('POST', 'https://example.com', headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}, data=b'foo')
 ```
 
 ### fetch
 
 ```sh
-$ to-requests --fetch code <<-END
+$ convert-to-requests --fetch code <<-END
 fetch("https://example.com", {
   "headers": {
     "accept": "application/json"
@@ -91,7 +91,7 @@ Chromium doesn't include a `User-Agent` header in either.
 ### Using pip
 
 ```bash
-$ pip install to-requests
+$ pip install convert-to-requests
 ```
 
 NB: depending on your system you may need to use e.g. `pip3 --user`
@@ -103,18 +103,18 @@ NB: this installs the latest development version, not the latest
 release.
 
 ```bash
-$ git clone https://github.com/obfusk/to-requests.git
-$ cd to-requests
+$ git clone https://github.com/obfusk/convert-to-requests.git
+$ cd convert-to-requests
 $ pip install -e .
 ```
 
 NB: you may need to add e.g. `~/.local/bin` to your `$PATH` in order
-to run `to-requests`.
+to run `convert-to-requests`.
 
 To update to the latest development version:
 
 ```bash
-$ cd to-requests
+$ cd convert-to-requests
 $ git pull --rebase
 ```
 

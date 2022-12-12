@@ -13,17 +13,17 @@ install:
 test: doctest lint lint-extra
 
 doctest:
-	$(PYTHON) -m doctest to_requests/__init__.py
+	$(PYTHON) -m doctest convert_to_requests/__init__.py
 
 lint:
-	flake8 to_requests/__init__.py
-	pylint to_requests/__init__.py
+	flake8 convert_to_requests/__init__.py
+	pylint convert_to_requests/__init__.py
 
 lint-extra:
-	mypy --strict --disallow-any-unimported to_requests/__init__.py
+	mypy --strict --disallow-any-unimported convert_to_requests/__init__.py
 
 clean: cleanup
-	rm -fr to_requests.egg-info/
+	rm -fr convert_to_requests.egg-info/
 
 cleanup:
 	find -name '*~' -delete -print

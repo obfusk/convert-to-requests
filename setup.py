@@ -6,8 +6,8 @@ __version__ = "0.1.0"
 info = Path(__file__).with_name("README.md").read_text(encoding = "utf8")
 
 setuptools.setup(
-    name              = "to-requests",
-    url               = "https://github.com/obfusk/to-requests",
+    name              = "convert-to-requests",
+    url               = "https://github.com/obfusk/convert-to-requests",
     description       = "convert curl/fetch command to python requests",
     long_description  = info,
     long_description_content_type = "text/markdown",
@@ -39,9 +39,9 @@ setuptools.setup(
         "Topic :: Utilities",
     ],
     keywords          = "curl fetch requests",
-    entry_points      = dict(console_scripts = ["to-requests = to_requests:main"]),
-    packages          = ["to_requests"],
-    package_data      = dict(to_requests = ["py.typed"]),
+    entry_points      = dict(console_scripts = ["convert-to-requests = convert_to_requests:main"]),
+    packages          = ["convert_to_requests"],
+    package_data      = dict(convert_to_requests = ["py.typed"]),
     python_requires   = ">=3.8",
     install_requires  = ["requests"],
 )
