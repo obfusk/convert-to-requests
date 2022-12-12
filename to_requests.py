@@ -270,7 +270,7 @@ def to_python_code(method: str, url: str, headers: Dict[str, str],
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="curl-to-requests.py", description=DESC)
+    parser = argparse.ArgumentParser(prog="to-requests.py", description=DESC)
     parser.add_argument("--fetch", action="store_true",
                         help="parse fetch instead of curl; NB: see CAVEATS")
     parser.add_argument("--parse-bash-strings", action="store_true",

@@ -10,11 +10,11 @@ all:
 test: doctest lint lint-extra
 
 doctest:
-	$(PYTHON) -m doctest curl_to_requests.py
+	$(PYTHON) -m doctest to_requests.py
 
 lint:
-	flake8 curl_to_requests.py
-	pylint curl_to_requests.py
+	flake8 to_requests.py
+	pylint to_requests.py
 
 lint-extra:
-	mypy --strict --disallow-any-unimported curl_to_requests.py
+	mypy --strict --disallow-any-unimported to_requests.py
