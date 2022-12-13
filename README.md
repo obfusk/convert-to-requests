@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2022 FC Stegerman <flx@obfusk.net> -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+
 [![GitHub Release](https://img.shields.io/github/release/obfusk/convert-to-requests.svg?logo=github)](https://github.com/obfusk/convert-to-requests/releases)
 [![PyPI Version](https://img.shields.io/pypi/v/convert-to-requests.svg)](https://pypi.python.org/pypi/convert-to-requests)
 [![Python Versions](https://img.shields.io/pypi/pyversions/convert-to-requests.svg)](https://pypi.python.org/pypi/convert-to-requests)
@@ -30,8 +33,10 @@ subcommand).
 Get the code:
 
 ```bash
-$ convert-to-requests code <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
-requests.request('GET', 'https://obfusk.ch', headers={'User-Agent': 'Mozilla/5.0'})
+$ convert-to-requests code --pretty <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
+requests.request('GET', 'https://obfusk.ch', headers={
+    'User-Agent': 'Mozilla/5.0'
+})
 ```
 
 Execute the request:
@@ -78,6 +83,8 @@ requests.request('GET', 'https://example.com', headers={'accept': 'application/j
 RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
 >>> print(to_python_code(req.method, req.url, req.headers, req.data))
 requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
+>>> print(req.code())               # shorter alternative
+requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
 ```
 
 ```python
@@ -85,6 +92,9 @@ requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
 >>> r = requests.request(req.method, req.url, headers=req.headers, data=req.data)
 >>> r.raise_for_status()
 >>> print(r.text, end="")
+[...]
+>>> print(req.exec().text, end="")  # shorter alternative
+[...]
 ```
 
 ```python

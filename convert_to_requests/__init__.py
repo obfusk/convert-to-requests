@@ -13,8 +13,10 @@ to fetch") from stdin and either execute the request using requests.request()
 CLI
 ===
 
-$ convert-to-requests code <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
-requests.request('GET', 'https://obfusk.ch', headers={'User-Agent': 'Mozilla/5.0'})
+$ convert-to-requests code --pretty <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'"
+requests.request('GET', 'https://obfusk.ch', headers={
+    'User-Agent': 'Mozilla/5.0'
+})
 
 $ convert-to-requests exec -v <<< "curl 'https://obfusk.ch' -H 'User-Agent: Mozilla/5.0'" | head -2
 GET https://obfusk.ch headers={'User-Agent': 'Mozilla/5.0'} data=None
@@ -49,11 +51,16 @@ API
 RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
 >>> print(to_python_code(req.method, req.url, req.headers, req.data))
 requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
+>>> print(req.code())               # shorter alternative
+requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
 
 #>> import requests
 #>> r = requests.request(req.method, req.url, headers=req.headers, data=req.data)
 #>> r.raise_for_status()
 #>> print(r.text, end="")
+[...]
+#>> print(req.exec().text, end="")  # shorter alternative
+[...]
 
 >>> from convert_to_requests import fetch_to_requests, to_python_code
 >>> req = fetch_to_requests('''fetch("https://example.com", {"headers": {}, "method": "POST", "body": "'foo'"});''')
@@ -80,13 +87,15 @@ from typing import Dict, Optional, Tuple
 
 import requests
 
-METHODS = ("GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE")
-
+__version__ = "0.1.1"
+NAME = "convert-to-requests"
 DESC = """
 Parse curl command (from "copy to cURL") or (w/ --fetch) fetch code (from "copy
 to fetch") from stdin and either execute the request using requests.request()
 (exec subcommand) or print Python code to do so (code subcommand).
 """[1:-1]
+
+METHODS = ("GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE")
 
 ESC = {
     "a": "\a", "b": "\b", "e": "\027", "E": "\027", "f": "\f", "n": "\n",
@@ -95,7 +104,17 @@ ESC = {
 OCT = "01234567"
 HEX = "0123456789abcdef"
 
-RequestData = namedtuple("RequestData", ("method", "url", "headers", "data", "ignored"))
+
+class RequestData(namedtuple("_RequestData", ("method", "url", "headers", "data", "ignored"))):
+    """Request data (method, url, headers, data, ignored opts/args)."""
+
+    def exec(self, raise_for_status: bool = True) -> requests.Response:
+        """Execute request using perform_request()."""
+        return perform_request(*self[:-1], raise_for_status=raise_for_status)
+
+    def code(self, pretty: bool = False) -> str:
+        """Convert request to Python code using to_python_code()."""
+        return to_python_code(*self[:-1], pretty=pretty)
 
 
 # FIXME: use argparse?!
@@ -292,7 +311,7 @@ def fetch_to_requests(command: str) -> RequestData:
     command = re.sub(r"\);$", "]", command)
     url, args = json.loads(command)
     method = args.pop("method", "GET")
-    headers = args.pop("headers")
+    headers = args.pop("headers", {})
     data = args.pop("body", None)
     if data is not None:
         data = data.encode()
@@ -304,7 +323,7 @@ def fetch_to_requests(command: str) -> RequestData:
     return RequestData(method, url, headers, data, [f"{k}=" for k in args])
 
 
-def curl_to_python_code(command: str) -> str:
+def curl_to_python_code(command: str, pretty: bool = False) -> str:
     r"""
     Convert curl command to Python code.
 
@@ -313,20 +332,49 @@ def curl_to_python_code(command: str) -> str:
     ... '''
     >>> print(curl_to_python_code(command))
     requests.request('GET', 'https://example.com', headers={'User-Agent': 'Mozilla/5.0'})
+    >>> print(curl_to_python_code(command, pretty=True))
+    requests.request('GET', 'https://example.com', headers={
+        'User-Agent': 'Mozilla/5.0'
+    })
     >>> command = r'''
     ... curl 'https://example.com' -H 'User-Agent: Mozilla/5.0'
     ... -H 'Accept: application/json' -X POST --data-raw foo
     ... '''
     >>> print(curl_to_python_code(command))
     requests.request('POST', 'https://example.com', headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'}, data=b'foo')
+    >>> print(curl_to_python_code(command, pretty=True))
+    requests.request('POST', 'https://example.com', headers={
+        'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json'
+    }, data=b'foo')
+    >>> command = command.replace("Mozilla/5.0", " ".join(["spam"] * 16))
+    >>> command = command.replace("foo", "data" * 32)
+    >>> print(curl_to_python_code(command, pretty=True))
+    requests.request('POST', 'https://example.com', headers={
+        'User-Agent': 'spam spam spam spam spam spam spam spam spam spam spam spam '
+                      'spam spam spam spam',
+        'Accept': 'application/json',
+    }, data=(
+        b'datadatadatadatadatadatadatadatadatadatadatadatadatadatadatadatadatadatadata'
+        b'datadatadatadatadatadatadatadatadatadatadatadatadata'
+    ))
+    >>> command = r'''
+    ... curl 'https://example.com' --data-raw foo
+    ... '''
+    >>> print(curl_to_python_code(command, pretty=True))
+    requests.request('POST', 'https://example.com', headers={}, data=b'foo')
+    >>> command = command.replace("foo", "data" * 8)
+    >>> print(curl_to_python_code(command, pretty=True))
+    requests.request('POST', 'https://example.com', headers={}, data=(
+        b'datadatadatadatadatadatadatadata'
+    ))
 
     """
-    return to_python_code(*curl_to_requests(command)[:-1])
+    return to_python_code(*curl_to_requests(command)[:-1], pretty=pretty)
 
 
-def fetch_to_python_code(command: str) -> str:
+def fetch_to_python_code(command: str, pretty: bool = False) -> str:
     """Convert fetch code to Python code."""
-    return to_python_code(*fetch_to_requests(command)[:-1])
+    return to_python_code(*fetch_to_requests(command)[:-1], pretty=pretty)
 
 
 def to_python_code(method: str, url: str, headers: Dict[str, str],
@@ -341,19 +389,30 @@ def to_python_code(method: str, url: str, headers: Dict[str, str],
         h = repr(headers)
     s = f"requests.request({method!r}, {url!r}, headers={h}"
     t = f", data={data!r})" if data is not None else ")"
-    w = len(s.rsplit("\n", 1)[-1]) + len(t)
-    if pretty and data is not None and w > 80:
-        t = pprint.pformat(data).replace("\n", "\n   ")
-        t = ", data=(\n    " + (t[1:-1] if "\n" in t else t) + "\n))"
+    if pretty and data is not None:
+        if len(s.rsplit("\n", 1)[-1]) + len(t) > 80:
+            t = pprint.pformat(data).replace("\n", "\n   ")
+            t = ", data=(\n    " + (t[1:-1] if "\n" in t else t) + "\n))"
     return s + t
 
 
+def perform_request(method: str, url: str, headers: Dict[str, str],
+                    data: Optional[bytes] = None,
+                    raise_for_status: bool = True) -> requests.Response:
+    r = requests.request(method, url, headers=headers, data=data)   # pylint: disable=W3101
+    if raise_for_status:
+        r.raise_for_status()
+    return r
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="convert-to-requests", description=DESC)
+    parser = argparse.ArgumentParser(prog=NAME, description=DESC)
     parser.add_argument("--fetch", action="store_true",
                         help="parse fetch instead of curl; NB: see CAVEATS")
     parser.add_argument("--parse-bash-strings", action="store_true",
                         help="parse bash-style $'' string (as argument to --data-raw)")
+    parser.add_argument("--version", action="version",
+                        version=f"{NAME}, version {__version__}")
     subs = parser.add_subparsers(title="subcommands", dest="command")
     subs.required = True
     sub_exec = subs.add_parser("exec", help="execute the request")
@@ -369,16 +428,11 @@ def main() -> None:
     for arg in req.ignored:
         print(f"Warning: ignoring {arg}", file=sys.stderr)
     if args.command == "code":
-        print(to_python_code(req.method, req.url, req.headers, req.data, pretty=args.pretty))
+        print(req.code(pretty=args.pretty))
     elif args.command == "exec":
         if args.verbose:
             print(f"{req.method} {req.url} headers={req.headers} data={req.data}", file=sys.stderr)
-        kwargs = dict(headers=req.headers)
-        if req.data is not None:
-            kwargs["data"] = req.data
-        r = requests.request(req.method, req.url, **kwargs)     # pylint: disable=W3101
-        r.raise_for_status()
-        print(r.text, end="")
+        print(req.exec().text, end="")
 
 
 if __name__ == "__main__":
