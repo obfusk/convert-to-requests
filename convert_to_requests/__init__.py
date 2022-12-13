@@ -87,7 +87,7 @@ from typing import Dict, Optional, Tuple
 
 import requests
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 NAME = "convert-to-requests"
 DESC = """
 Parse curl command (from "copy to cURL") or (w/ --fetch) fetch code (from "copy
