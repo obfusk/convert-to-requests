@@ -1,0 +1,16 @@
+v0.2.0
+
+• replace shlex.split() w/ split_curl_command().
+• drop parse_bash_strings/--parse-bash-strings.
+
+v0.1.2
+
+• add --pretty, --version.
+• add perform_request().
+• make RequestData a class, add .code() & .exec().
+• various improvements.
+
+v0.1.1
+
+• add module docstring.
+• README: add Python API.

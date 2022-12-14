@@ -46,7 +46,7 @@ API
 ===
 
 >>> from convert_to_requests import curl_to_requests, to_python_code
->>> req = curl_to_requests(r"curl 'https://example.com' -X POST --data-raw $'\'foo\''", parse_bash_strings=True)
+>>> req = curl_to_requests(r"curl 'https://example.com' -X POST --data-raw $'\'foo\''")
 >>> req
 RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
 >>> print(to_python_code(req.method, req.url, req.headers, req.data))
@@ -79,11 +79,10 @@ import argparse
 import json
 import pprint
 import re
-import shlex
 import sys
 
 from collections import namedtuple
-from typing import Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import requests
 
@@ -118,20 +117,11 @@ class RequestData(namedtuple("_RequestData", ("method", "url", "headers", "data"
 
 
 # FIXME: use argparse?!
-def curl_to_requests(command: str, parse_bash_strings: bool = False) -> RequestData:
+def curl_to_requests(command: str) -> RequestData:
     r"""
     Parse curl command from "copy as cURL" (Firefox, Chromium).
 
     Returns RequestData.
-
-    CAVEATS
-    -------
-
-    Firefox and Chromium produce e.g. --data-raw $'\'foo\'' when the POST data
-    contains single quotes.  Unfortunately, shlex can't parse this kind of
-    bash-style string.  Use parse_bash_strings=True to (attempt to) parse these
-    properly.  Of course, manually rewriting to e.g. --data-raw \''foo'\' always
-    works.
 
     Examples
     --------
@@ -150,9 +140,7 @@ def curl_to_requests(command: str, parse_bash_strings: bool = False) -> RequestD
 
     """
     method, headers, data, ignored = None, {}, None, []
-    if parse_bash_strings:
-        command, data = _bash_string_data(command)
-    cmd, url, *curl = [x for x in shlex.split(command) if x != "\n"]
+    cmd, url, *curl = split_curl_command(command)
     assert cmd == "curl"
     i, n = 0, len(curl)
     while i < n:
@@ -177,17 +165,62 @@ def curl_to_requests(command: str, parse_bash_strings: bool = False) -> RequestD
     return RequestData(method, url, headers, data, ignored)
 
 
-def _bash_string_data(command: str) -> Tuple[str, Optional[bytes]]:
-    if (s := " --data-raw $'") in command:
-        i = command.index(s)
-        try:
-            shlex.split(command[:i])
-        except ValueError:
-            pass
+def split_curl_command(command: str) -> Tuple[str, ...]:
+    r"""
+    Split curl command like shlex.split(), but with support for bash-style $''
+    strings and specifically tailored for the curl commands produced by
+    Firefox/Chromium, not generic shell-like syntax.
+
+    >>> command = r'''
+    ... curl 'https://example.com' -H $'foo: \'bar\'' -X POST \
+    ... --data-raw $'\'foo\''
+    ... '''
+    >>> split_curl_command(command)
+    ('curl', 'https://example.com', '-H', "foo: 'bar'", '-X', 'POST', '--data-raw', "'foo'")
+
+    """
+    tokens = []
+    s = (command.rstrip() + " ").lstrip()
+    i, n = 0, len(s)
+
+    def read_token(f: Callable[[str], bool]) -> str:
+        nonlocal i
+        token = ""
+        while i < n and not f(s[i]):
+            token += s[i]
+            i += 1
+        return token
+
+    while i < n:
+        if s[i:i + 2] == "\\\n":
+            i += 2
+        elif s[i] == "#":
+            break
+        elif s[i] == "'":
+            i += 1
+            t = read_token(lambda c: c == "'")
+            if not (i < n and s[i] == "'"):
+                raise ValueError("Unterminated single-quoted string")
+            i += 1
+            if i < n and not s[i].isspace():
+                raise ValueError("Expected whitespace after single-quoted string")
+            tokens.append(t)
+        elif s[i:i + 2] == "$'":
+            t, s = parse_dollar_string(s[i:])
+            i, n = 0, len(s)
+            if i < n and not s[i].isspace():
+                raise ValueError("Expected whitespace after $'' string")
+            tokens.append(t)
         else:
-            data, rest = parse_dollar_string(command[i + s.index("$"):])
-            return command[:i] + rest, data.encode()
-    return command, None
+            t = read_token(str.isspace)
+            if "'" in t:
+                raise ValueError("Expected whitespace before single-quoted string")
+            if '"' in t:
+                raise ValueError("Unsupported double-quoted string")
+            tokens.append(t)
+        s = s[i:].lstrip()
+        i, n = 0, len(s)
+    return tuple(tokens)
 
 
 def parse_dollar_string(s: str) -> Tuple[str, str]:
@@ -261,7 +294,7 @@ def parse_dollar_string(s: str) -> Tuple[str, str]:
 
 
 def fetch_to_requests(command: str) -> RequestData:
-    """
+    r"""
     Parse fetch code from "copy as fetch" (Firefox, Chromium) or "copy as
     Node.js fetch" (Chromium).
 
@@ -409,8 +442,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog=NAME, description=DESC)
     parser.add_argument("--fetch", action="store_true",
                         help="parse fetch instead of curl; NB: see CAVEATS")
-    parser.add_argument("--parse-bash-strings", action="store_true",
-                        help="parse bash-style $'' string (as argument to --data-raw)")
     parser.add_argument("--version", action="version",
                         version=f"{NAME}, version {__version__}")
     subs = parser.add_subparsers(title="subcommands", dest="command")
@@ -421,10 +452,7 @@ def main() -> None:
     sub_code.add_argument("--pretty", action="store_true", help="pretty-print")
     args = parser.parse_args()
     command = sys.stdin.read()
-    if args.fetch:
-        req = fetch_to_requests(command)
-    else:
-        req = curl_to_requests(command, parse_bash_strings=args.parse_bash_strings)
+    req = fetch_to_requests(command) if args.fetch else curl_to_requests(command)
     for arg in req.ignored:
         print(f"Warning: ignoring {arg}", file=sys.stderr)
     if args.command == "code":

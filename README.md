@@ -78,7 +78,7 @@ requests.request('GET', 'https://example.com', headers={'accept': 'application/j
 
 ```python
 >>> from convert_to_requests import curl_to_requests, to_python_code
->>> req = curl_to_requests(r"curl 'https://example.com' -X POST --data-raw $'\'foo\''", parse_bash_strings=True)
+>>> req = curl_to_requests(r"curl 'https://example.com' -X POST --data-raw $'\'foo\''")
 >>> req
 RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'", ignored=[])
 >>> print(to_python_code(req.method, req.url, req.headers, req.data))
@@ -113,14 +113,6 @@ requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
 ```
 
 ## CAVEATS
-
-### curl
-
-Firefox and Chromium produce e.g. `--data-raw $'\'foo\''` when the POST data
-contains single quotes.  Unfortunately, `shlex` can't parse this kind of
-`bash`-style string.  Use `--parse-bash-strings` to (attempt to) parse these
-properly.  Of course, manually rewriting to e.g. `--data-raw \''foo'\'` always
-works.
 
 ### fetch
 
