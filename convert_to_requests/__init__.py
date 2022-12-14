@@ -169,9 +169,24 @@ def curl_to_requests(command: str) -> RequestData:
 
 def split_curl_command(command: str) -> Tuple[str, ...]:
     r"""
-    Split curl command like shlex.split(), but with support for bash-style $''
+    Split curl command: like shlex.split(), but with support for bash-style $''
     strings and specifically tailored for the curl commands produced by
     Firefox/Chromium, not generic shell-like syntax.
+
+    All tokens must be separated by whitespace; mixing different types of token
+    -- e.g. foo'bar' -- is not supported.
+
+    Supported:
+    * unquoted strings (literal character values, no quotes or backslashes);
+    * single-quoted strings (literal character values, including whitespace; no
+      backslash escapes or nested single quotes);
+    * bash-style $'' strings (backslash escapes replaced as in ANSI C, escaping
+      allows nested single quotes);
+    * comments starting with '#' (everything after is ignored).
+
+    Unsupported:
+    * double-quoted strings;
+    * backslash escapes (except before newline and in $'' strings).
 
     >>> command = r'''
     ... curl 'https://example.com' -H $'foo: \'bar\'' -X POST \
@@ -180,9 +195,23 @@ def split_curl_command(command: str) -> Tuple[str, ...]:
     >>> split_curl_command(command)
     ('curl', 'https://example.com', '-H', "foo: 'bar'", '-X', 'POST', '--data-raw', "'foo'")
 
+    >>> for c in (r"foo\oops", 'foo"oops"', "foo'oops'", "'foo'oops",
+    ...           "$'foo'oops", "'oops", "$'oops"):
+    ...     try:
+    ...         split_curl_command(c)
+    ...     except ValueError as e:
+    ...         print(e)
+    Unsupported backslash escape
+    Unsupported double-quoted string
+    Expected whitespace before single-quoted string
+    Expected whitespace after single-quoted string
+    Expected whitespace after $'' string
+    Unterminated single-quoted string
+    Could not parse $'' string
+
     """
     tokens = []
-    s = (command.rstrip() + " ").lstrip()
+    s = command.strip()
     i, n = 0, len(s)
 
     def read_token(f: Callable[[str], bool]) -> str:
@@ -219,6 +248,8 @@ def split_curl_command(command: str) -> Tuple[str, ...]:
                 raise ValueError("Expected whitespace before single-quoted string")
             if '"' in t:
                 raise ValueError("Unsupported double-quoted string")
+            if "\\" in t:
+                raise ValueError("Unsupported backslash escape")
             tokens.append(t)
         s = s[i:].lstrip()
         i, n = 0, len(s)
