@@ -69,9 +69,11 @@ RequestData(method='POST', url='https://example.com', headers={}, data=b"'foo'",
 >>> print(to_python_code(req.method, req.url, req.headers, req.data))
 requests.request('POST', 'https://example.com', headers={}, data=b"'foo'")
 
->>> from convert_to_requests import parse_dollar_string
+>>> from convert_to_requests import parse_dollar_string, split_curl_command
 >>> parse_dollar_string(r"$'\'foo\''")
 ("'foo'", '')
+>>> split_curl_command(r''' curl https://example.com -H $'foo: \'bar\'' ''')
+('curl', 'https://example.com', '-H', "foo: 'bar'")
 
 """
 
