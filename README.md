@@ -58,7 +58,7 @@ requests.request('POST', 'https://example.com', headers={'User-Agent': 'Mozilla/
 ### fetch
 
 ```bash
-$ convert-to-requests --fetch code <<-END
+$ convert-to-requests --fetch code <<'END'
 fetch("https://example.com", {
   "headers": {
     "accept": "application/json"
